@@ -11,18 +11,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Tu peux enregistrer ici tes services
     }
 
     /**
      * Bootstrap any application services.
      */
-    public function boot()
-{
-    // Autoriser uniquement l'accès via le sous-domaine (ex: touzadaw.localhost)
-    $host = request()->getHost();
-    if (!str_ends_with($host, '.localhost')) {
-        abort(403, 'Unauthorized host.');
+    public function boot(): void
+    {
+        // Autoriser uniquement les accès via un sous-domaine de localhost (ex: aziz.localhost)
+        $host = request()->getHost();
+
+        if (!str_ends_with($host, '.localhost')) {
+            abort(403, 'Unauthorized host.');
+        }
     }
-}
 }
