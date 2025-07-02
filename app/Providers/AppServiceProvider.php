@@ -19,9 +19,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Autoriser uniquement les accès via un sous-domaine de localhost (ex: aziz.localhost)
-        $host = request()->getHost();
+        // Ne bloque que les requêtes HTTP, pas les commandes artisan
+        if (app()->runningInConsole()) {
+            return;
+        }
 
+        $host = request()->getHost();
         if (!str_ends_with($host, '.localhost')) {
             abort(403, 'Unauthorized host.');
         }
