@@ -18,26 +18,31 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-     public function boot()
+   public function boot()
 {
-    // Autoriser uniquement l'accès via le sous-domaine (ex: touzadaw.localhost)
     $host = request()->getHost();
     if (!str_ends_with($host, '.localhost')) {
         abort(403, 'Unauthorized host.');
     }
 
-    // Vérifie le sous-domaine (ex: touzadaw dans touzadaw.localhost)
     if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
         abort(403, 'Invalid subdomain format.');
     }
 
     $subdomain = $matches[1];
 
-    // Vérifie que le sous-domaine existe dans la table tenants
-    $tenant = Tenant::where('subdomain', $subdomain)->first();
+    // Récupère le sous-domaine autorisé depuis la session
+    $allowedSubdomain = session('allowed_subdomain');
 
-    if (!$tenant) {
-        abort(403, 'Unauthorized subdomain.');
+    // Si aucun sous-domaine autorisé n'est défini (pas connecté), on laisse passer ou on bloque selon ta logique
+    if (!$allowedSubdomain) {
+        // abort(403, 'No subdomain allowed for this user.');
+        return;
+    }
+
+    // Vérifie que le sous-domaine courant est bien celui autorisé pour l'utilisateur
+    if ($subdomain !== $allowedSubdomain) {
+        abort(403, 'You are not allowed to access this subdomain.');
     }
 }
 }
