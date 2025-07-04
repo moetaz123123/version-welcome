@@ -20,15 +20,7 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        // Récupère le host (ex: touzadaw.localhost)
-        $host = request()->getHost();
-
-        // Autoriser uniquement les domaines en .localhost
-        if (!str_ends_with($host, '.localhost')) {
-            abort(403, 'Unauthorized host.');
-        }
-
-       
+     
 
         $subdomain = $matches[1];
 
