@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,36 +14,42 @@ class AppServiceProvider extends ServiceProvider
         // Enregistre les services si besoin
     }
 
-    public function boot()
+    public function boot(): void
     {
-        // Ne bloque pas les commandes Artisan (ex: php artisan migrate)
+        // ✅ Ne bloque pas les commandes Artisan (migrate, serve, etc.)
         if (app()->runningInConsole()) {
             return;
         }
 
-        $host = Request::getHost(); // ex: sub.localhost
+        $host = Request::getHost(); // Ex: fr.localhost
 
-        // Autoriser localhost sans contrôle
-        if ($host === 'localhost' || $host === '127.0.0.1') {
+        // ✅ Autoriser localhost seul
+        if (in_array($host, ['localhost', '127.0.0.1'])) {
             return;
         }
 
-        // Vérifie que l’host est du type sousdomaine.localhost
+        // ✅ Vérifie que l’hôte est sous forme: sub.localhost
         if (preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
-            $subdomain = $matches[1]; // Extrait "sub" depuis "sub.localhost"
+            $subdomain = $matches[1]; // Extrait "fr" de "fr.localhost"
 
-            // Vérifie si ce sous-domaine est présent dans la BDD
-            $exists = DB::table('users')->where('name', $subdomain)->exists();
+            // (Debug facultatif) log::info("Subdomain reçu : " . $subdomain);
+
+            try {
+                $exists = DB::table('users')->where('name', $subdomain)->exists();
+            } catch (\Exception $e) {
+                Log::error("Erreur base de données : " . $e->getMessage());
+                abort(500, 'Erreur lors de la connexion à la base de données.');
+            }
 
             if (!$exists) {
-                abort(403, 'Ce sous-domaine ne correspond à aucun utilisateur.');
+                abort(403, "Le sous-domaine \"$subdomain\" ne correspond à aucun utilisateur.");
             }
 
             // ✅ Sous-domaine valide → continuer normalement
             return;
         }
 
-        // ❌ Si l’host ne correspond pas au format attendu
-        abort(403, 'Nom d’hôte invalide.');
+        // ❌ Si le host ne correspond pas au format attendu
+        abort(403, 'Nom d’hôte invalide. Format attendu : sousdomaine.localhost');
     }
 }
