@@ -19,7 +19,8 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        $host = Request::getHost();
+        $host = Request::getHost();   // Exemple : touzaa.localhost
+        $port = Request::getPort();   // Exemple : 8878
 
         if (!str_ends_with($host, '.localhost')) {
             abort(403, 'Unauthorized host.');
@@ -29,13 +30,16 @@ class AppServiceProvider extends ServiceProvider
             abort(403, 'Invalid subdomain format.');
         }
 
-        // L’index 1 correspond au premier groupe capturé dans la regex
         $currentSubdomain = $matches[1];
-
         $allowedSubdomain = Session::get('allowed_subdomain');
+        $allowedPort = Session::get('allowed_port');
 
-        if (!$allowedSubdomain || $currentSubdomain !== $allowedSubdomain) {
-            abort(403, 'Access to this subdomain is forbidden.');
+        if (!$allowedSubdomain || !$allowedPort) {
+            abort(403, 'No allowed subdomain or port set in session.');
+        }
+
+        if ($currentSubdomain !== $allowedSubdomain || $port != $allowedPort) {
+            abort(403, "Access forbidden: subdomain or port mismatch.");
         }
     }
 }
