@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\DB;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -12,30 +13,38 @@ class AppServiceProvider extends ServiceProvider
         // Enregistre les services si besoin
     }
 
-    public function boot()
+    public function boot(): void
     {
         if (app()->runningInConsole()) {
-            return;
+            return; // Ne bloque pas les commandes Artisan
         }
 
-        $host = request()->getHost();
+        $host = Request::getHost(); // Ex: touza.localhost
 
-        // Autorise localhost pur
+        // Autoriser localhost seul (page par défaut)
         if ($host === 'localhost' || $host === '127.0.0.1') {
             return;
         }
 
-        // Autoriser uniquement les *.localhost
+        // Vérifie que le host se termine bien par .localhost
         if (!str_ends_with($host, '.localhost')) {
             abort(403, 'Unauthorized host.');
         }
 
-        // Vérifie si le sous-domaine existe dans /etc/hosts
-        $hostsFile = '/etc/hosts';
-        $hostsContent = @file_get_contents($hostsFile); // le @ évite les warnings
-
-        if (!$hostsContent || !str_contains($hostsContent, $host)) {
-            abort(403, "Subdomain '{$host}' not found in /etc/hosts.");
+        // Extraire le sous-domaine (ex: "touzadaw" de "touzadaw.localhost")
+        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
+            abort(403, 'Invalid subdomain format.');
         }
+
+        $subdomain = $matches[1];
+
+        // Vérifie dans la base de données s’il y a un user dont le nom = sous-domaine
+        $exists = DB::table('users')->where('nom', $subdomain)->exists();
+
+        if (!$exists) {
+            abort(403, 'This subdomain is not associated with any user.');
+        }
+
+        // ✅ Sinon, sous-domaine autorisé → continuer
     }
 }
