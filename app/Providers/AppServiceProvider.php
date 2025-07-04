@@ -20,10 +20,6 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-     
-
-        $subdomain = $matches[1];
-
         // Vérifie si ce sous-domaine existe comme nom d’utilisateur
         $exists = DB::table('users')->where('name', $subdomain)->exists();
 
