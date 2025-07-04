@@ -28,10 +28,7 @@ class AppServiceProvider extends ServiceProvider
             abort(403, 'Unauthorized host.');
         }
 
-        // Extraire le sous-domaine (ex: "touzadaw" de "touzadaw.localhost")
-        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
-            abort(403, 'Invalid subdomain format.');
-        }
+       
 
         $subdomain = $matches[1];
 
