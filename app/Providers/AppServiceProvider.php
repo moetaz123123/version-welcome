@@ -3,46 +3,47 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use App\Models\Tenant; // Assure-toi que ce chemin est correct
+use Illuminate\Support\Facades\Session; // pour plus de clarté
+use Illuminate\Support\Facades\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        // Tu peux enregistrer ici tes services
+        // Enregistre les services si besoin
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-   public function boot()
-{
-    $host = request()->getHost();
-    if (!str_ends_with($host, '.localhost')) {
-        abort(403, 'Unauthorized host.');
+    public function boot(): void
+    {
+        if (app()->runningInConsole()) {
+            return; // ne bloque pas les commandes Artisan
+        }
+
+        $host = Request::getHost();
+
+        // 1. Vérifie que le domaine se termine par .localhost
+        if (!str_ends_with($host, '.localhost')) {
+            abort(403, 'Unauthorized host.');
+        }
+
+        // 2. Extrait le sous-domaine
+        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
+            abort(403, 'Invalid subdomain format.');
+        }
+
+        $currentSubdomain = $matches[1];
+
+        // 3. Récupère le sous-domaine autorisé pour la session
+        $allowedSubdomain = Session::get('allowed_subdomain');
+
+        // Si la session ne contient pas de sous-domaine autorisé : blocage
+        if (!$allowedSubdomain) {
+            abort(403, 'No subdomain allowed for this user.');
+        }
+
+        // 4. Comparaison stricte
+        if ($currentSubdomain !== $allowedSubdomain) {
+            abort(403, 'Access to this subdomain is forbidden.');
+        }
     }
-
-    if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
-        abort(403, 'Invalid subdomain format.');
-    }
-
-    $subdomain = $matches[1];
-
-    // Récupère le sous-domaine autorisé depuis la session
-    $allowedSubdomain = session('allowed_subdomain');
-
-    // Si aucun sous-domaine autorisé n'est défini (pas connecté), on laisse passer ou on bloque selon ta logique
-    if (!$allowedSubdomain) {
-        // abort(403, 'No subdomain allowed for this user.');
-        return;
-    }
-
-    // Vérifie que le sous-domaine courant est bien celui autorisé pour l'utilisateur
-    if ($subdomain !== $allowedSubdomain) {
-        abort(403, 'You are not allowed to access this subdomain.');
-    }
-}
 }
