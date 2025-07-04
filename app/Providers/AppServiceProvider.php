@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $subdomain = $matches[1];
 
         // Vérifie dans la base de données s’il y a un user dont le nom = sous-domaine
-        $exists = DB::table('users')->where('nom', $subdomain)->exists();
+        $exists = DB::table('users')->where('name', $subdomain)->exists();
 
         if (!$exists) {
             abort(403, 'This subdomain is not associated with any user.');
