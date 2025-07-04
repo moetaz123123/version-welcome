@@ -19,32 +19,34 @@ class AppServiceProvider extends ServiceProvider
             return; // Ne bloque pas les commandes Artisan
         }
 
-        $host = Request::getHost(); // Ex: touza.localhost
+        $host = Request::getHost(); // Ex: touzadaw.localhost
 
-        // Autoriser localhost seul (page par défaut)
+        // ✅ Cas normal pour localhost (page principale)
         if ($host === 'localhost' || $host === '127.0.0.1') {
             return;
         }
 
-        // Vérifie que le host se termine bien par .localhost
+        // ✅ Vérifie que l'host se termine bien par .localhost
         if (!str_ends_with($host, '.localhost')) {
-            abort(403, 'Unauthorized host.');
+            abort(403, 'Nom d\'hôte non autorisé.');
         }
 
-        // Extraire le sous-domaine (ex: "touzadaw" de "touzadaw.localhost")
-        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
-            abort(403, 'Invalid subdomain format.');
+        // ✅ Extraire le sous-domaine
+        if (preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
+            $subdomain = $matches[1];
+
+            // ✅ Vérifie dans la BDD s'il existe un utilisateur avec ce nom
+            $exists = DB::table('users')->where('name', $subdomain)->exists();
+
+            if (!$exists) {
+                abort(403, 'Ce sous-domaine ne correspond à aucun utilisateur.');
+            }
+
+            // ✅ Sous-domaine reconnu, autorisé
+            return;
         }
 
-        $subdomain = $matches[1];
-
-        // Vérifie dans la base de données s’il y a un user dont le nom = sous-domaine
-        $exists = DB::table('users')->where('name', $subdomain)->exists();
-
-        if (!$exists) {
-            abort(403, 'This subdomain is not associated with any user.');
-        }
-
-        // ✅ Sinon, sous-domaine autorisé → continuer
+        // ❌ Si format de sous-domaine incorrect
+        abort(403, 'Format de sous-domaine invalide.');
     }
 }
