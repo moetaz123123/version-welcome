@@ -21,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
 
         $host = Request::getHost();
 
+        // Autoriser domaine principal (localhost sans sous-domaine)
+        if ($host === 'localhost' || $host === '127.0.0.1') {
+            return;
+        }
+
         if (!str_ends_with($host, '.localhost')) {
             abort(403, 'Unauthorized host.');
         }
@@ -29,12 +34,16 @@ class AppServiceProvider extends ServiceProvider
             abort(403, 'Invalid subdomain format.');
         }
 
-        // L’index 1 correspond au premier groupe capturé dans la regex
         $currentSubdomain = $matches[1];
-
         $allowedSubdomain = Session::get('allowed_subdomain');
 
-        if (!$allowedSubdomain || $currentSubdomain !== $allowedSubdomain) {
+        // Si session non définie, on laisse passer (ex: première page après register)
+        if (!$allowedSubdomain) {
+            return;
+        }
+
+        // Sinon, bloquer si sous-domaine différent
+        if ($currentSubdomain !== $allowedSubdomain) {
             abort(403, 'Access to this subdomain is forbidden.');
         }
     }
