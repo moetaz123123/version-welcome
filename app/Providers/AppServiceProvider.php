@@ -13,38 +13,12 @@ class AppServiceProvider extends ServiceProvider
         // Enregistre les services si besoin
     }
 
-    public function boot(): void
-    {
-        if (app()->runningInConsole()) {
-            return;
-        }
-
-        $host = Request::getHost();
-
-        // Autoriser domaine principal (localhost sans sous-domaine)
-        if ($host === 'localhost' || $host === '127.0.0.1') {
-            return;
-        }
-
-        if (!str_ends_with($host, '.localhost')) {
-            abort(403, 'Unauthorized host.');
-        }
-
-        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
-            abort(403, 'Invalid subdomain format.');
-        }
-
-        $currentSubdomain = $matches[1];
-        $allowedSubdomain = Session::get('allowed_subdomain');
-
-        // Si session non définie, on laisse passer (ex: première page après register)
-        if (!$allowedSubdomain) {
-            return;
-        }
-
-        // Sinon, bloquer si sous-domaine différent
-        if ($currentSubdomain !== $allowedSubdomain) {
-            abort(403, 'Access to this subdomain is forbidden.');
-        }
+    public function boot()
+{
+    // Autoriser uniquement l'accès via le sous-domaine (ex: touzadaw.localhost)
+    $host = request()->getHost();
+    if (!str_ends_with($host, '.localhost')) {
+        abort(403, 'Unauthorized host.');
     }
+}
 }
