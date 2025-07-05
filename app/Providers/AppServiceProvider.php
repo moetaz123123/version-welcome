@@ -10,43 +10,43 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Enregistre les services si besoin
+        // Enregistrer les services si besoin
     }
 
     public function boot(): void
     {
         if (app()->runningInConsole()) {
-            return; // Ne bloque pas les commandes Artisan
+            return;
         }
 
-        $host = Request::getHost(); // Ex: touzadaw.localhost
+        $host = Request::getHost(); // ex: client1.localhost
 
-        // ✅ Cas normal pour localhost (page principale)
+        // Laisser passer les accès directs à localhost
         if ($host === 'localhost' || $host === '127.0.0.1') {
             return;
         }
 
-        // ✅ Vérifie que l'host se termine bien par .localhost
+        // Vérifier que l'hôte est bien un sous-domaine de localhost
         if (!str_ends_with($host, '.localhost')) {
             abort(403, 'Nom d\'hôte non autorisé.');
         }
 
-        // ✅ Extraire le sous-domaine
+        // Extraire le sous-domaine (ex: "client1" de "client1.localhost")
         if (preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
             $subdomain = $matches[1];
 
-            // ✅ Vérifie dans la BDD s'il existe un utilisateur avec ce nom
-            $exists = DB::table('tenants')->where('name', $subdomain)->exists();
+            // Vérifie dans la table tenants si le sous-domaine existe
+            $exists = DB::table('tenants')->where('subdomain', $subdomain)->exists();
 
             if (!$exists) {
-                abort(403, 'Ce sous-domaine ne correspond à aucun utilisateur.');
+                abort(403, 'Ce sous-domaine ne correspond à aucun espace.');
             }
 
-            // ✅ Sous-domaine reconnu, autorisé
+            // OK : le sous-domaine existe dans la table `tenants`
             return;
         }
 
-        // ❌ Si format de sous-domaine incorrect
+        // Si le format du sous-domaine est invalide
         abort(403, 'Format de sous-domaine invalide.');
     }
 }
