@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
             $subdomain = $matches[1];
 
             // ✅ Vérifie dans la BDD s'il existe un utilisateur avec ce nom
-            $exists = DB::table('tennats')->where('name', $subdomain)->exists();
+            $exists = DB::table('tenants')->where('name', $subdomain)->exists();
 
             if (!$exists) {
                 abort(403, 'Ce sous-domaine ne correspond à aucun utilisateur.');
