@@ -3,50 +3,44 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Enregistrer les services si besoin
+        // Rien à faire ici pour l'instant
     }
 
     public function boot(): void
     {
         if (app()->runningInConsole()) {
-            return;
+            return; // Ignore les commandes Artisan
         }
 
-        $host = Request::getHost(); // ex: client1.localhost
+        // Récupérer le host sans le port (ex: "taz.localhost" depuis "taz.localhost:2405")
+        $host = request()->getHost();
 
-        // Laisser passer les accès directs à localhost
+        // Autoriser l'accès direct via localhost ou 127.0.0.1
         if ($host === 'localhost' || $host === '127.0.0.1') {
             return;
         }
 
-        // Vérifier que l'hôte est bien un sous-domaine de localhost
-        if (!str_ends_with($host, '.localhost')) {
-            abort(403, 'Nom d\'hôte non autorisé.');
+        // Vérifie que le host est bien un sous-domaine *.localhost
+        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
+            abort(403, 'Format de sous-domaine invalide.');
         }
 
-        // Extraire le sous-domaine (ex: "client1" de "client1.localhost")
-        if (preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
-            $subdomain = $matches[1];
+        $subdomain = $matches[1];
 
-            // Vérifie dans la table tenants si le sous-domaine existe
+        // Vérifie que la table "tenants" existe avant de faire la requête
+        if (Schema::hasTable('tenants')) {
             $exists = DB::table('tenants')->where('subdomain', $subdomain)->exists();
 
             if (!$exists) {
-                abort(403, 'Ce sous-domaine ne correspond à aucun espace.');
+                abort(403, "Sous-domaine '{$subdomain}' non reconnu.");
             }
-
-            // OK : le sous-domaine existe dans la table `tenants`
-            return;
         }
-
-        // Si le format du sous-domaine est invalide
-        abort(403, 'Format de sous-domaine invalide.');
     }
 }
