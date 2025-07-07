@@ -21,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        // Récupérer le sous-domaine
+        // Récupérer le sous-domaine et le port
         $host = request()->getHost(); // exemple : moetaz.localhost
         $port = request()->getPort(); // exemple : 8547
 
