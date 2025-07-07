@@ -64,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
                 abort(403, "Port invalide pour '{$subdomain}'. Utilisez le port : {$expectedPort}");
             }
 
-            // NOUVELLE VERIFICATION : Vérifier si le sous-domaine a été modifié pour ce port
+            // VERIFICATION : Détecter si le sous-domaine a été modifié pour ce port
             $this->verifySubdomainModification($subdomain, $port);
         }
     }
@@ -77,13 +77,14 @@ class AppServiceProvider extends ServiceProvider
         // Récupérer le sous-domaine qui était associé à ce port
         $expectedSubdomain = Cache::get("port_subdomain_{$port}");
         
-        // Si on a un sous-domaine en cache pour ce port et qu'il est différent
-        if ($expectedSubdomain && $expectedSubdomain !== $subdomain) {
-            abort(403, "Modification détectée : Le port {$port} était associé au sous-domaine '{$expectedSubdomain}', pas '{$subdomain}'.");
-        }
-        
-        // Sauvegarder l'association port -> subdomain dans le cache pour les prochaines vérifications
-        if (!$expectedSubdomain) {
+        // Si on a un sous-domaine en cache pour ce port
+        if ($expectedSubdomain) {
+            // Vérifier si le sous-domaine a été modifié
+            if ($expectedSubdomain !== $subdomain) {
+                abort(403, "Modification détectée : Le port {$port} était associé au sous-domaine '{$expectedSubdomain}', pas '{$subdomain}'.");
+            }
+        } else {
+            // Premier accès : sauvegarder l'association port -> subdomain
             Cache::put("port_subdomain_{$port}", $subdomain, now()->addDays(30));
         }
     }
