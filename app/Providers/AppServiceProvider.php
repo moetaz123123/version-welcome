@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Vérifier le format sous-domaine.localhost
-        if (!preg_match('/^([a-zA-Z0-9_-]+)\.localhost$/', $host, $matches)) {
+        if (!preg_match('/^([a-zA-Z0-9_-]+)\\.localhost$/', $host, $matches)) {
             abort(403, 'Format de sous-domaine invalide.');
         }
 
@@ -40,10 +40,19 @@ class AppServiceProvider extends ServiceProvider
         // Vérifier que la table tenants existe
         if (Schema::hasTable('tenants')) {
             // Vérifier que le sous-domaine est présent
-            $tenantExists = DB::table('tenants')->where('subdomain', $subdomain)->exists();
+            $tenant = DB::table('tenants')->where('subdomain', $subdomain)->first();
 
-            if (!$tenantExists) {
+            if (!$tenant) {
                 abort(403, "Sous-domaine '{$subdomain}' non autorisé.");
+            }
+
+            // Vérifier que l'utilisateur connecté correspond au tenant
+            if (auth()->check()) {
+                $user = auth()->user();
+                // Supposons que le user a un champ tenant_id
+                if ($user->tenant_id != $tenant->id) {
+                    abort(403, "Vous n'avez pas accès à ce sous-domaine.");
+                }
             }
 
             // Récupérer le port attendu depuis le cache (mis lors de la création du tenant)
