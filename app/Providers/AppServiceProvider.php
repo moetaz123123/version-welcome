@@ -42,6 +42,9 @@ class AppServiceProvider extends ServiceProvider
         $subdomain = $matches[1];
         \Log::info("DEBUG - Subdomain extrait: {$subdomain}");
 
+        // VERIFICATION PRIORITAIRE : Vérifier d'abord si le port est déjà lié à un autre sous-domaine
+        $this->verifyPortSubdomainBinding($subdomain, $port);
+
         // Vérifier que la table tenants existe
         if (Schema::hasTable('tenants')) {
             \Log::info("DEBUG - Table tenants existe");
@@ -58,14 +61,13 @@ class AppServiceProvider extends ServiceProvider
             // Vérifier que l'utilisateur connecté correspond au tenant
             if (auth()->check()) {
                 $user = auth()->user();
-                // Supposons que le user a un champ tenant_id
-                if ($user->tenant_id != $tenant->id) {
+                if (isset($user->tenant_id) && $user->tenant_id != $tenant->id) {
                     \Log::error("DEBUG - User tenant_id ne correspond pas");
                     abort(403, "Vous n'avez pas accès à ce sous-domaine.");
                 }
             }
 
-            // Récupérer le port attendu depuis le cache (mis lors de la création du tenant)
+            // Récupérer le port attendu depuis le cache
             $expectedPort = Cache::get("tenant_port_{$subdomain}");
             \Log::info("DEBUG - Port attendu pour {$subdomain}: " . ($expectedPort ?? 'NULL'));
             
@@ -80,37 +82,75 @@ class AppServiceProvider extends ServiceProvider
                 abort(403, "Port invalide pour '{$subdomain}'. Utilisez le port : {$expectedPort}");
             }
 
-            // VERIFICATION : Détecter si le sous-domaine a été modifié pour ce port
-            \Log::info("DEBUG - Appel verifySubdomainModification");
-            $this->verifySubdomainModification($subdomain, $port);
+            \Log::info("DEBUG - Accès autorisé pour {$subdomain} sur port {$port}");
         } else {
             \Log::error("DEBUG - Table tenants n'existe pas");
         }
     }
 
     /**
-     * Vérifier si le sous-domaine a été modifié pour ce port spécifique
+     * Vérifier et protéger l'association port <-> sous-domaine
      */
-    private function verifySubdomainModification(string $subdomain, int $port): void
+    private function verifyPortSubdomainBinding(string $subdomain, int $port): void
     {
-        // Récupérer le sous-domaine qui était associé à ce port
-        $expectedSubdomain = Cache::get("port_subdomain_{$port}");
+        $cacheKey = "port_subdomain_{$port}";
+        $expectedSubdomain = Cache::get($cacheKey);
         
-        // Debug : Log les valeurs pour comprendre ce qui se passe
-        \Log::info("Debug - Port: {$port}, Subdomain actuel: {$subdomain}, Subdomain attendu: " . ($expectedSubdomain ?? 'NULL'));
-        
-        // Si on a un sous-domaine en cache pour ce port
+        \Log::info("DEBUG - Port: {$port}, Subdomain actuel: {$subdomain}, Subdomain lié: " . ($expectedSubdomain ?? 'AUCUN'));
+
         if ($expectedSubdomain) {
-            // Vérifier si le sous-domaine a été modifié
+            // Le port est déjà lié à un sous-domaine
             if ($expectedSubdomain !== $subdomain) {
-                \Log::warning("Tentative de modification détectée : {$expectedSubdomain} -> {$subdomain} sur port {$port}");
-                abort(403, "Modification détectée : Le port {$port} était associé au sous-domaine '{$expectedSubdomain}', pas '{$subdomain}'.");
+                \Log::warning("ALERTE SÉCURITÉ - Tentative de modification détectée!");
+                \Log::warning("Port {$port} était lié à '{$expectedSubdomain}', tentative d'accès avec '{$subdomain}'");
+                
+                // Bloquer l'accès avec un message d'erreur explicite
+                abort(403, 
+                    "Erreur de sécurité : Le port {$port} est déjà associé au sous-domaine '{$expectedSubdomain}'. " .
+                    "Vous ne pouvez pas utiliser ce port avec '{$subdomain}'. " .
+                    "Veuillez utiliser le port correct pour ce sous-domaine ou libérer le port existant."
+                );
             }
-            \Log::info("Accès autorisé pour {$subdomain} sur port {$port}");
+            
+            // Renouveler le cache pour maintenir l'association
+            Cache::put($cacheKey, $subdomain, now()->addDays(30));
+            \Log::info("DEBUG - Association confirmée et renouvelée: {$subdomain} <-> port {$port}");
+            
         } else {
-            // Premier accès : sauvegarder l'association port -> subdomain
-            Cache::put("port_subdomain_{$port}", $subdomain, now()->addDays(30));
-            \Log::info("Premier accès enregistré : {$subdomain} sur port {$port}");
+            // Premier accès : créer l'association
+            Cache::put($cacheKey, $subdomain, now()->addDays(30));
+            \Log::info("DEBUG - Nouvelle association créée: {$subdomain} <-> port {$port}");
         }
+    }
+
+    /**
+     * Méthode utilitaire pour libérer un port (à appeler depuis une route admin)
+     */
+    public static function releasePort(int $port): bool
+    {
+        $cacheKey = "port_subdomain_{$port}";
+        $subdomain = Cache::get($cacheKey);
+        
+        if ($subdomain) {
+            Cache::forget($cacheKey);
+            \Log::info("Port {$port} libéré du sous-domaine '{$subdomain}'");
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Méthode utilitaire pour voir toutes les associations actives
+     */
+    public static function getActivePortBindings(): array
+    {
+        $bindings = [];
+        
+        // Cette méthode nécessiterait une implémentation plus complexe
+        // pour scanner tous les ports en cache. Pour l'instant, on peut
+        // la laisser vide ou implémenter un système de tracking séparé.
+        
+        return $bindings;
     }
 }
