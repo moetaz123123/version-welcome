@@ -77,15 +77,21 @@ class AppServiceProvider extends ServiceProvider
         // Récupérer le sous-domaine qui était associé à ce port
         $expectedSubdomain = Cache::get("port_subdomain_{$port}");
         
+        // Debug : Log les valeurs pour comprendre ce qui se passe
+        \Log::info("Debug - Port: {$port}, Subdomain actuel: {$subdomain}, Subdomain attendu: " . ($expectedSubdomain ?? 'NULL'));
+        
         // Si on a un sous-domaine en cache pour ce port
         if ($expectedSubdomain) {
             // Vérifier si le sous-domaine a été modifié
             if ($expectedSubdomain !== $subdomain) {
+                \Log::warning("Tentative de modification détectée : {$expectedSubdomain} -> {$subdomain} sur port {$port}");
                 abort(403, "Modification détectée : Le port {$port} était associé au sous-domaine '{$expectedSubdomain}', pas '{$subdomain}'.");
             }
+            \Log::info("Accès autorisé pour {$subdomain} sur port {$port}");
         } else {
             // Premier accès : sauvegarder l'association port -> subdomain
             Cache::put("port_subdomain_{$port}", $subdomain, now()->addDays(30));
+            \Log::info("Premier accès enregistré : {$subdomain} sur port {$port}");
         }
     }
 }
