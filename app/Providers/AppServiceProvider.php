@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         if (Schema::hasTable('tenants')) {
             // Vérifier que le sous-domaine est présent
             $tenant = DB::table('tenants')->where('subdomain', $subdomain)->first();
+
             if (!$tenant) {
                 abort(403, "Sous-domaine '{$subdomain}' non autorisé.");
             }
@@ -55,37 +57,14 @@ class AppServiceProvider extends ServiceProvider
 
             // Récupérer le port attendu depuis le cache (mis lors de la création du tenant)
             $expectedPort = Cache::get("tenant_port_{$subdomain}");
+
             if (!$expectedPort) {
                 abort(403, "Port pour '{$subdomain}' non trouvé. Veuillez réessayer plus tard.");
             }
 
-            // Vérifier que le port correspond au sous-domaine
             if ((int)$expectedPort !== (int)$port) {
-                abort(403, "Port invalide pour '{$subdomain}'. Utilisez le port : {$expectedPort}");
+                abort(403, "Port invalide pour '{$subdomain}'. Utilisez : {$expectedPort}");
             }
-
-            // VERIFICATION : Détecter si le sous-domaine a été modifié pour ce port
-            $this->verifySubdomainModification($subdomain, $port);
-        }
-    }
-
-    /**
-     * Vérifier si le sous-domaine a été modifié pour ce port spécifique
-     */
-    private function verifySubdomainModification(string $subdomain, int $port): void
-    {
-        // Récupérer le sous-domaine qui était associé à ce port
-        $expectedSubdomain = Cache::get("port_subdomain_{$port}");
-        
-        // Si on a un sous-domaine en cache pour ce port
-        if ($expectedSubdomain) {
-            // Vérifier si le sous-domaine a été modifié
-            if ($expectedSubdomain !== $subdomain) {
-                abort(403, "Modification détectée : Le port {$port} était associé au sous-domaine '{$expectedSubdomain}', pas '{$subdomain}'.");
-            }
-        } else {
-            // Premier accès : sauvegarder l'association port -> subdomain
-            Cache::put("port_subdomain_{$port}", $subdomain, now()->addDays(30));
         }
     }
 }
